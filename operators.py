@@ -49,45 +49,43 @@ class Ops_TtoS(bpy.types.Operator):
     @staticmethod
     def imageTpye(files, settings):
         """Check whether the file is of the specified type"""
-        fileList = {}
+        dataDict = {}
 
         # normalize fields
-        FIELDS = {
-            "Base Color": settings.base_color,
-            "Subsurface Color": settings.sss_color,
-            "Metallic": settings.metallic,
-            "Specular": settings.specular,
-            "Roughness": settings.rough,
-            "Glossiness": settings.gloss,
-            "Transmission": settings.transmission,
-            "Emission": settings.emission,
-            "Alpha": settings.alpha,
-            "Bump": settings.bump,
-            "Normal": settings.normal,
-            "Displacement": settings.displacement,
-            "Ambient Occlusion": settings.ambient_occlusion,
+        fields = {
+            "Base Color": [settings.base_color, "sRGB"],
+            "Ambient Occlusion": [settings.ambient_occlusion, "Non-Color"],
+            "Subsurface Color": [settings.sss_color, "Non-Color"],
+            "Metallic": [settings.metallic, "Non-Color"],
+            "Specular": [settings.specular, "Non-Color"],
+            "Roughness": [settings.rough, "Non-Color"],
+            "Glossiness": [settings.gloss, "Non-Color"],
+            "Transmission": [settings.transmission, "Non-Color"],
+            "Emission": [settings.emission, "Non-Color"],
+            "Alpha": [settings.alpha, "Non-Color"],
+            "Bump": [settings.bump, "Non-Color"],
+            "Normal": [settings.normal, "Non-Color"],
+            "Displacement": [settings.displacement, "Non-Color"],
         }
-        FIELDS = dict(
-            map(
-                lambda key, value: (
-                    key,
-                    list(filter(lambda x: x, value.lower().split(" "))),
-                ),
-                FIELDS.keys(),
-                FIELDS.values(),
-            )
-        )
+
+        for key, value in fields.items():
+            fields[key] = [
+                list(filter(lambda x: x, value[0].lower().split(" "))),
+                value[1],
+            ]
 
         # check file type
-        for file in files:
-            name = file.name.lower()
+        name_fileList = [(file.name.lower(), file) for file in files]
 
-            for key, values in FIELDS.items():
-                for value in values:
-                    if value in name:
-                        fileList[key] = file
+        for key, values in fields.items():
+            keyWords = values[0]
+            for name, file in name_fileList:
+                if any(keyWord in name for keyWord in keyWords):
+                    dataDict[key] = [file, values[1]]
+                    name_fileList.remove((name, file))
+                    break
 
-        return fileList
+        return dataDict
 
     @staticmethod
     def importImage(nodes, filepath, location, colorSpace="Non-Color", label=""):
@@ -116,136 +114,21 @@ class Ops_TtoS(bpy.types.Operator):
         texNodedir = {}
 
         # --- import textures ---
+        def importTextures(type):
+            """import textures function"""
+            if type in fileList:
+                texNodedir[type] = self.importImage(
+                    nodes,
+                    self.directory + fileList[type][0].name,
+                    location,
+                    fileList[type][1],
+                    type,
+                )
+
         location[0] -= settings.gapX * 2
-
-        if "Base Color" in fileList:
-            node = self.importImage(
-                nodes,
-                self.directory + fileList["Base Color"].name,
-                location,
-                "sRGB",
-                "Base Color",
-            )
-            texNodedir["Base Color"] = node
-
-        if "Subsurface Color" in fileList:
+        for fileItem in fileList:
+            importTextures(fileItem)
             location[1] -= settings.gapY
-            node = self.importImage(
-                nodes,
-                self.directory + fileList["Subsurface Color"].name,
-                location,
-                "Non-Color",
-                "SSS Color",
-            )
-            texNodedir["Subsurface Color"] = node
-
-        if "Metallic" in fileList:
-            location[1] -= settings.gapY
-            node = self.importImage(
-                nodes,
-                self.directory + fileList["Metallic"].name,
-                location,
-                "Non-Color",
-                "Metallic",
-            )
-            texNodedir["Metallic"] = node
-
-        if "Specular" in fileList:
-            location[1] -= settings.gapY
-            node = self.importImage(
-                nodes,
-                self.directory + fileList["Specular"].name,
-                location,
-                "Non-Color",
-                "Specular",
-            )
-            texNodedir["Specular"] = node
-
-        if "Roughness" in fileList:
-            location[1] -= settings.gapY
-            node = self.importImage(
-                nodes,
-                self.directory + fileList["Roughness"].name,
-                location,
-                "Non-Color",
-                "Roughness",
-            )
-            texNodedir["Roughness"] = node
-        elif "Glossiness" in fileList:
-            location[1] -= settings.gapY
-            node = self.importImage(
-                nodes,
-                self.directory + fileList["Glossiness"].name,
-                location,
-                "Non-Color",
-                "Glossiness",
-            )
-            texNodedir["Glossiness"] = node
-
-        if "transmission" in fileList:
-            location[1] -= settings.gapY
-            node = self.importImage(
-                nodes,
-                self.directory + fileList["transmission"].name,
-                location,
-                "Non-Color",
-                "transmission",
-            )
-            texNodedir["transmission"] = node
-
-        if "Emission" in fileList:
-            location[1] -= settings.gapY
-            node = self.importImage(
-                nodes,
-                self.directory + fileList["Emission"].name,
-                location,
-                "Non-Color",
-                "Emission",
-            )
-            texNodedir["Emission"] = node
-
-        if "Alpha" in fileList:
-            location[1] -= settings.gapY
-            node = self.importImage(
-                nodes,
-                self.directory + fileList["Alpha"].name,
-                location,
-                "Non-Color",
-                "Alpha",
-            )
-            texNodedir["Alpha"] = node
-
-        if "Normal" in fileList:
-            location[1] -= settings.gapY
-            node = self.importImage(
-                nodes,
-                self.directory + fileList["Normal"].name,
-                location,
-                "Non-Color",
-                "Normal",
-            )
-            texNodedir["Normal"] = node
-        elif "Bump" in fileList:
-            location[1] -= settings.gapY
-            node = self.importImage(
-                nodes,
-                self.directory + fileList["Bump"].name,
-                location,
-                "Non-Color",
-                "Bump",
-            )
-            texNodedir["Bump"] = node
-
-        if "Displacement" in fileList:
-            location[1] -= settings.gapY
-            node = self.importImage(
-                nodes,
-                self.directory + fileList["Displacement"].name,
-                location,
-                "Non-Color",
-                "Displacement",
-            )
-            texNodedir["Displacement"] = node
 
         # return False if no textures imported
         if len(texNodedir) == 0:

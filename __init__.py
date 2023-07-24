@@ -3,7 +3,7 @@ bl_info = {
     "author": "Bo0inM",
     "description": "Create shader node from general texture",
     "blender": (2, 80, 0),
-    "version": (0, 4, 0),
+    "version": (0, 4, 1),
     "location": "Node Editor > Add > Shader > Tex->Shader",
     "doc_url": "https://github.com/bo0inm/TexToShader",
     "category": "Node",
