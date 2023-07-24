@@ -154,7 +154,8 @@ class Ops_TtoS(bpy.types.Operator):
             # mix node
             location[0] = nodC.location[0] + settings.gapX
             location[1] = nodC.location[1]
-            mix = self.addNode(nodes, "ShaderNodeMixRGB", location, True)
+            mix = self.addNode(nodes, "ShaderNodeMixRGB", location)
+            mix.label = "Base Color + AO"
             mix.blend_type = "MULTIPLY"
             connect_sockets(nodC.outputs["Color"], mix.inputs["Color1"])
             connect_sockets(node.outputs["Color"], mix.inputs["Color2"])
