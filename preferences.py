@@ -81,7 +81,7 @@ class Pref_TtoS(bpy.types.AddonPreferences):
     )
     ambient_occlusion: StringProperty(
         name="Ambient Occlusion",
-        default="ao ambient occlusion",
+        default="ao ambientocclusion",
         description="Naming Components for AO maps",
     )
 
