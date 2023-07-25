@@ -12,4 +12,4 @@ Importing textures one by one, setting color space, and connecting corresponding
 
 ## Setting
 * **Node X/Y Gap:** The horizontal/vertical distance between nodes.
-* **Texture Tags:** Corresponding textures imported according to keywords.
+* **Texture Keywords:** Corresponding textures imported according to keywords.
