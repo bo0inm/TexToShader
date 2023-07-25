@@ -89,7 +89,7 @@ class Pref_TtoS(bpy.types.AddonPreferences):
         layout = self.layout
         layout.prop(self, "gapX")
         layout.prop(self, "gapY")
-        layout.label(text="texture keywords:")
+        layout.label(text="Texture Keywords:")
         layout.prop(self, "base_color")
         layout.prop(self, "sss_color")
         layout.prop(self, "metallic")
