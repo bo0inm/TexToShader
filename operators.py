@@ -3,13 +3,6 @@ from copy import copy
 from bpy_extras.node_utils import connect_sockets
 from bpy_extras.io_utils import ImportHelper
 
-""" TODO
-README.md
-ignore
-
-explorer right click menu suppert
- """
-
 
 class Ops_TtoS(bpy.types.Operator):
     """Create shader node tree from texture"""
@@ -53,19 +46,19 @@ class Ops_TtoS(bpy.types.Operator):
 
         # normalize fields
         fields = {
-            "Base Color": [settings.base_color, "sRGB"],
-            "Ambient Occlusion": [settings.ambient_occlusion, "Non-Color"],
-            "Subsurface Color": [settings.sss_color, "Non-Color"],
-            "Metallic": [settings.metallic, "Non-Color"],
-            "Specular": [settings.specular, "Non-Color"],
-            "Roughness": [settings.rough, "Non-Color"],
-            "Glossiness": [settings.gloss, "Non-Color"],
-            "Transmission": [settings.transmission, "Non-Color"],
-            "Emission": [settings.emission, "Non-Color"],
-            "Alpha": [settings.alpha, "Non-Color"],
-            "Bump": [settings.bump, "Non-Color"],
-            "Normal": [settings.normal, "Non-Color"],
-            "Displacement": [settings.displacement, "Non-Color"],
+            "Base Color": [settings.base_color, settings.color_colorspace],
+            "Ambient Occlusion": [settings.ambient_occlusion, settings.data_colorspace],
+            "Subsurface Color": [settings.sss_color, settings.data_colorspace],
+            "Metallic": [settings.metallic, settings.data_colorspace],
+            "Specular": [settings.specular, settings.data_colorspace],
+            "Roughness": [settings.rough, settings.data_colorspace],
+            "Glossiness": [settings.gloss, settings.data_colorspace],
+            "Transmission": [settings.transmission, settings.data_colorspace],
+            "Emission": [settings.emission, settings.data_colorspace],
+            "Alpha": [settings.alpha, settings.data_colorspace],
+            "Bump": [settings.bump, settings.data_colorspace],
+            "Normal": [settings.normal, settings.data_colorspace],
+            "Displacement": [settings.displacement, settings.data_colorspace],
         }
 
         for key, value in fields.items():
@@ -78,9 +71,8 @@ class Ops_TtoS(bpy.types.Operator):
         name_fileList = [(file.name.lower(), file) for file in files]
 
         for key, values in fields.items():
-            keyWords = values[0]
             for name, file in name_fileList:
-                if any(keyWord in name for keyWord in keyWords):
+                if any(keyWord in name for keyWord in values[0]):
                     dataDict[key] = [file, values[1]]
                     name_fileList.remove((name, file))
                     break
@@ -88,7 +80,7 @@ class Ops_TtoS(bpy.types.Operator):
         return dataDict
 
     @staticmethod
-    def importImage(nodes, filepath, location, colorSpace="Non-Color", label=""):
+    def importImage(nodes, filepath, location, colorSpace="Raw", label=""):
         """Import image and create node"""
         node = nodes.new("ShaderNodeTexImage")
 
@@ -114,15 +106,15 @@ class Ops_TtoS(bpy.types.Operator):
         texNodedir = {}
 
         # --- import textures ---
-        def importTextures(type):
+        def importTextures(Type):
             """import textures function"""
-            if type in fileList:
-                texNodedir[type] = self.importImage(
+            if Type in fileList:
+                texNodedir[Type] = self.importImage(
                     nodes,
-                    self.directory + fileList[type][0].name,
+                    self.directory + fileList[Type][0].name,
                     location,
-                    fileList[type][1],
-                    type,
+                    fileList[Type][1],
+                    Type,
                 )
 
         location[0] -= settings.gapX * 2
@@ -147,19 +139,9 @@ class Ops_TtoS(bpy.types.Operator):
             connect_sockets(mapping.outputs["Vector"], node.inputs["Vector"])
 
         # --- texture effect node ---
-        if "Ambient Occlusion" in texNodedir and "Base Color" in texNodedir:
-            nodC = texNodedir.pop("Base Color")
-            node = texNodedir.pop("Ambient Occlusion")
-
-            # mix node
-            location[0] = nodC.location[0] + settings.gapX
-            location[1] = nodC.location[1]
-            mix = self.addNode(nodes, "ShaderNodeMixRGB", location)
-            mix.label = "Base Color + AO"
-            mix.blend_type = "MULTIPLY"
-            connect_sockets(nodC.outputs["Color"], mix.inputs["Color1"])
-            connect_sockets(node.outputs["Color"], mix.inputs["Color2"])
-            connect_sockets(mix.outputs["Color"], BSDFNode.inputs["Base Color"])
+        if "Base Color" in texNodedir:
+            node = texNodedir.pop("Base Color")
+            connect_sockets(node.outputs["Color"], BSDFNode.inputs["Base Color"])
 
         # only have AO texture
         elif "Ambient Occlusion" in texNodedir:

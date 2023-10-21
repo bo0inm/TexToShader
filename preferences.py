@@ -18,7 +18,17 @@ class Pref_TtoS(bpy.types.AddonPreferences):
         min=0,
         description="Gap between two nodes on Y axis",
     )
-
+    # colorspace preferences
+    color_colorspace: StringProperty(
+        name="Color",
+        default="sRGB",
+        description="Default Colorspace for color images",
+    )
+    data_colorspace: StringProperty(
+        name="Non-Color",
+        default="Raw",
+        description="Default Colorspace for Non-Color images",
+    )
     # textName Properties
     # from node_warngler/utils/preferences.py
     base_color: StringProperty(
@@ -89,6 +99,9 @@ class Pref_TtoS(bpy.types.AddonPreferences):
         layout = self.layout
         layout.prop(self, "gapX")
         layout.prop(self, "gapY")
+        layout.label(text="Default Colorspace: (Colorspace conversion need set correctly value)")
+        layout.prop(self, "color_colorspace")
+        layout.prop(self, "data_colorspace")
         layout.label(text="Texture Keywords:")
         layout.prop(self, "base_color")
         layout.prop(self, "sss_color")
