@@ -48,16 +48,16 @@ class Ops_TtoS(bpy.types.Operator):
         fields = {
             "Base Color": [settings.base_color, settings.color_colorspace],
             "Ambient Occlusion": [settings.ambient_occlusion, settings.data_colorspace],
-            "Subsurface Color": [settings.sss_color, settings.data_colorspace],
+            "Subsurface Weight": [settings.sss, settings.data_colorspace],
             "Metallic": [settings.metallic, settings.data_colorspace],
-            "Specular": [settings.specular, settings.data_colorspace],
-            "Roughness": [settings.rough, settings.data_colorspace],
-            "Glossiness": [settings.gloss, settings.data_colorspace],
-            "Transmission": [settings.transmission, settings.data_colorspace],
-            "Emission": [settings.emission, settings.data_colorspace],
+            "Tint": [settings.tint, settings.data_colorspace],  # Specular color
+            "Roughness": [settings.roughness, settings.data_colorspace],
+            "Glossiness": [settings.glossiness, settings.data_colorspace],
+            "Transmission Weight": [settings.transmission, settings.data_colorspace],
+            "Emission Strength": [settings.emission, settings.data_colorspace],  # Emission
             "Alpha": [settings.alpha, settings.data_colorspace],
-            "Bump": [settings.bump, settings.data_colorspace],
             "Normal": [settings.normal, settings.data_colorspace],
+            "Bump": [settings.bump, settings.data_colorspace],
             "Displacement": [settings.displacement, settings.data_colorspace],
         }
 
@@ -148,16 +148,6 @@ class Ops_TtoS(bpy.types.Operator):
             node = texNodedir.pop("Ambient Occlusion")
             connect_sockets(node.outputs["Color"], BSDFNode.inputs["Base Color"])
 
-        if "Glossiness" in texNodedir:
-            node = texNodedir.pop("Glossiness")
-
-            # invert node
-            location[0] = node.location[0] + settings.gapX
-            location[1] = node.location[1]
-            invert = self.addNode(nodes, "ShaderNodeInvert", location, True)
-            connect_sockets(node.outputs["Color"], invert.inputs["Color"])
-            connect_sockets(invert.outputs["Color"], BSDFNode.inputs["Specular"])
-
         normal = False
         if "Normal" in texNodedir:
             node = texNodedir.pop("Normal")
@@ -170,7 +160,6 @@ class Ops_TtoS(bpy.types.Operator):
             curves.mapping.curves[1].points[0].location[1] = 1
             curves.mapping.curves[1].points[1].location[1] = 0
             curves.label = "convert directX normal"
-            curves.width_hidden = 150
             curves.mute = True
             connect_sockets(node.outputs["Color"], curves.inputs["Color"])
 
@@ -190,6 +179,17 @@ class Ops_TtoS(bpy.types.Operator):
             bump = self.addNode(nodes, "ShaderNodeBump", location)
             connect_sockets(node.outputs["Color"], bump.inputs["Height"])
             connect_sockets(bump.outputs["Normal"], BSDFNode.inputs["Normal"])
+
+        if "Glossiness" in texNodedir:
+            node = texNodedir.pop("Glossiness")
+
+            if "Roughness" not in texNodedir:
+                # invert node
+                location[0] = node.location[0] + settings.gapX
+                location[1] = node.location[1]
+                invert = self.addNode(nodes, "ShaderNodeInvert", location, True)
+                connect_sockets(node.outputs["Color"], invert.inputs["Color"])
+                connect_sockets(invert.outputs["Color"], BSDFNode.inputs["Roughness"])
 
         if "Displacement" in texNodedir:
             node = texNodedir.pop("Displacement")
