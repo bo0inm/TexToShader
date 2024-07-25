@@ -1,10 +1,10 @@
 bl_info = {
     "name": "TexToShader",
     "author": "Bo0inM",
-    "description": "Create shader node from general texture",
-    "blender": (4, 0, 0),
-    "version": (0, 4, 3),
-    "location": "Node Editor > Add > Shader > Tex->Shader",
+    "description": "Create shader nodes based on the name of the texture files",
+    "blender": (4, 2, 0),
+    "version": (1, 0, 0),
+    "location": "Node Editor > Add > Tex->Shader",
     "doc_url": "https://github.com/bo0inm/TexToShader",
     "category": "Node",
 }
