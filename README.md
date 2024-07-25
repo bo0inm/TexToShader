@@ -1,15 +1,18 @@
 # TexToShader
-**Blender Add-ons.**
-Importing textures one by one, setting color space, and connecting corresponding nodes can be tedious. This Add-ons simplifies these steps by automatically importing and setting some common textures.
+
+**Blender Add-ons.** Easy to import universal textures.
 
 ![intro](./intro.gif)
 
-## Use
-1. Select the material node in shader editor.
-2. `shader editor` > `add` > `shader` > `Tex->Shader`.
-3. Select your texture files, enter.
-
-
 ## Setting
-* **Node X/Y Gap:** The horizontal/vertical distance between nodes.
-* **Texture Keywords:** Corresponding textures imported according to keywords.
+
+- **Node X/Y Gap:** The horizontal/vertical distance between nodes.
+- **Texture Keywords:** Import corresponding textures based on file name.
+- **Default Colorspace:** <span style="color:red;">If you used OCIO, you must set "Color" field because "sRGB" Colorspace universal named "sRGB - Texture" in OCIO config.</span>
+
+
+## Use
+
+1. Open the shader node.
+2. `shader editor` > `add` > `Tex->Shader`.
+3. Select your texture files, enter.

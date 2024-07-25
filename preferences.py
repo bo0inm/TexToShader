@@ -14,7 +14,7 @@ class Pref_TtoS(bpy.types.AddonPreferences):
     )
     gapY: IntProperty(
         name="Node Y Gap",
-        default=150,
+        default=100,
         min=0,
         description="Gap between two nodes on Y axis",
     )
@@ -37,45 +37,30 @@ class Pref_TtoS(bpy.types.AddonPreferences):
         default="diffuse diff albedo base col color basecolor",
         description="Base Color maps",
     )
-    ambient_occlusion: StringProperty(
+    ao: StringProperty(
         name="Ambient Occlusion",
         default="ao ambientocclusion",
         description="AO maps",
-    )
-    sss: StringProperty(
-        name="Subsurface",
-        default="sss subsurface",
-        description="Subsurface weight maps",
     )
     metallic: StringProperty(
         name="Metallic",
         default="metallic metalness metal mtl reflection refl",
         description="Metallness maps",
     )
-    tint: StringProperty(
-        name="Tint",
-        default="specular spec spc",
-        description="Tint (Specular Color) maps",
-    )
     roughness: StringProperty(
         name="Roughness",
         default="roughness rough",
         description="Roughness maps",
     )
+    ior: StringProperty(
+        name="IOR",
+        default="ior",
+        description="IOR maps",
+    )
     glossiness: StringProperty(
         name="Glossiness",
         default="gloss glossy glossiness",
-        description="Invert roughness maps,\nif roughtness is exist, this will ignored",
-    )
-    transmission: StringProperty(
-        name="Transmission",
-        default="transmission transparency",
-        description="Transmission maps",
-    )
-    emission: StringProperty(
-        name="Emission",
-        default="emission emissive emit",
-        description="Emission maps",
+        description="Glossiness maps(Invert roughness maps)",
     )
     alpha: StringProperty(
         name="Alpha",
@@ -87,7 +72,36 @@ class Pref_TtoS(bpy.types.AddonPreferences):
         default="normal nor nrm nrml norm",
         description="Normal maps",
     )
-    bump: StringProperty(name="Bump", default="bump bmp", description="Bump maps")
+    bump: StringProperty(
+        name="Bump",
+        default="bump bmp",
+        description="Bump maps",
+    )
+    sss_weight: StringProperty(
+        name="Subsurface Weight",
+        default="sss subsurface",
+        description="Subsurface weight maps",
+    )
+    sss_radius: StringProperty(
+        name="Subsurface Radius",
+        default="sss_color subsurface_color",
+        description="Subsurface Radius (Color) maps",
+    )
+    tint: StringProperty(
+        name="Tint",
+        default="specular spec spc",
+        description="Tint (Specular Color) maps",
+    )
+    transmission: StringProperty(
+        name="Transmission",
+        default="transmission transparency trans",
+        description="Transmission maps",
+    )
+    emission: StringProperty(
+        name="Emission",
+        default="emission emissive emit",
+        description="Emission maps",
+    )
     displacement: StringProperty(
         name="Displacement",
         default="displacement displace disp dsp height heightmap",
@@ -105,15 +119,17 @@ class Pref_TtoS(bpy.types.AddonPreferences):
         layout.prop(self, "data_colorspace")
         layout.label(text="Texture Keywords:")
         layout.prop(self, "base_color")
-        layout.prop(self, "ambient_occlusion")
-        layout.prop(self, "sss")
+        layout.prop(self, "ao")
         layout.prop(self, "metallic")
-        layout.prop(self, "tint")
         layout.prop(self, "roughness")
+        layout.prop(self, "ior")
         layout.prop(self, "glossiness")
-        layout.prop(self, "transmission")
-        layout.prop(self, "emission")
         layout.prop(self, "alpha")
         layout.prop(self, "normal")
         layout.prop(self, "bump")
+        layout.prop(self, "sss_weight")
+        layout.prop(self, "sss_radius")
+        layout.prop(self, "tint")
+        layout.prop(self, "transmission")
+        layout.prop(self, "emission")
         layout.prop(self, "displacement")

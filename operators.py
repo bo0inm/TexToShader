@@ -47,17 +47,22 @@ class Ops_TtoS(bpy.types.Operator):
         # normalize fields
         fields = {
             "Base Color": [settings.base_color, settings.color_colorspace],
-            "Ambient Occlusion": [settings.ambient_occlusion, settings.data_colorspace],
-            "Subsurface Weight": [settings.sss, settings.data_colorspace],
+            "Ambient Occlusion": [settings.ao, settings.data_colorspace],
             "Metallic": [settings.metallic, settings.data_colorspace],
-            "Tint": [settings.tint, settings.data_colorspace],  # Specular color
             "Roughness": [settings.roughness, settings.data_colorspace],
+            "IOR": [settings.ior, settings.data_colorspace],
             "Glossiness": [settings.glossiness, settings.data_colorspace],
-            "Transmission Weight": [settings.transmission, settings.data_colorspace],
-            "Emission Strength": [settings.emission, settings.data_colorspace],  # Emission
             "Alpha": [settings.alpha, settings.data_colorspace],
             "Normal": [settings.normal, settings.data_colorspace],
             "Bump": [settings.bump, settings.data_colorspace],
+            "Subsurface Weight": [settings.sss_weight, settings.data_colorspace],
+            "Subsurface Radius": [settings.sss_radius, settings.data_colorspace],
+            "Tint": [settings.tint, settings.data_colorspace],  # Specular color
+            "Transmission Weight": [settings.transmission, settings.data_colorspace],
+            "Emission Strength": [
+                settings.emission,
+                settings.data_colorspace,
+            ],
             "Displacement": [settings.displacement, settings.data_colorspace],
         }
 
@@ -100,7 +105,7 @@ class Ops_TtoS(bpy.types.Operator):
         node.hide = hide
         return node
 
-    def pipyline(self, nodes, BSDFNode, settings, fileList):
+    def pipeline(self, nodeTree, BSDFNode, OutputNode, settings, fileList):
         """Create node tree from texture"""
         location = copy(BSDFNode.location)
         texNodedir = {}
@@ -110,7 +115,7 @@ class Ops_TtoS(bpy.types.Operator):
             """import textures function"""
             if Type in fileList:
                 texNodedir[Type] = self.importImage(
-                    nodes,
+                    nodeTree,
                     self.directory + fileList[Type][0].name,
                     location,
                     fileList[Type][1],
@@ -129,9 +134,9 @@ class Ops_TtoS(bpy.types.Operator):
         # --- add uv vector node ---
         location[0] -= max(settings.gapX * 1.5, 400)
         location[1] = BSDFNode.location[1]
-        texCoord = self.addNode(nodes, "ShaderNodeTexCoord", location)
+        texCoord = self.addNode(nodeTree, "ShaderNodeTexCoord", location)
         location[0] += 200
-        mapping = self.addNode(nodes, "ShaderNodeMapping", location)
+        mapping = self.addNode(nodeTree, "ShaderNodeMapping", location)
         connect_sockets(texCoord.outputs["UV"], mapping.inputs["Vector"])
 
         # link textures vector
@@ -139,14 +144,44 @@ class Ops_TtoS(bpy.types.Operator):
             connect_sockets(mapping.outputs["Vector"], node.inputs["Vector"])
 
         # --- texture effect node ---
+        # AO texture just load if has both AO and Base Color
+        if "Ambient Occlusion" in texNodedir:
+            node = texNodedir.pop("Ambient Occlusion")
+
         if "Base Color" in texNodedir:
             node = texNodedir.pop("Base Color")
-            connect_sockets(node.outputs["Color"], BSDFNode.inputs["Base Color"])
 
-        # only have AO texture
-        elif "Ambient Occlusion" in texNodedir:
-            node = texNodedir.pop("Ambient Occlusion")
-            connect_sockets(node.outputs["Color"], BSDFNode.inputs["Base Color"])
+        connect_sockets(node.outputs["Color"], BSDFNode.inputs[0])
+
+        if "Metallic" in texNodedir:
+            node = texNodedir.pop("Metallic")
+            connect_sockets(node.outputs["Color"], BSDFNode.inputs[1])
+
+        roughness = False
+        if "Roughness" in texNodedir:
+            roughness = True
+            node = texNodedir.pop("Roughness")
+            connect_sockets(node.outputs["Color"], BSDFNode.inputs[2])
+
+        if "Glossiness" in texNodedir:
+            node = texNodedir.pop("Glossiness")
+
+            # invert node
+            location[0] = node.location[0] + settings.gapX
+            location[1] = node.location[1]
+            invert = self.addNode(nodeTree, "ShaderNodeInvert", location, True)
+            connect_sockets(node.outputs["Color"], invert.inputs["Color"])
+
+            if roughness is False:
+                connect_sockets(invert.outputs["Color"], BSDFNode.inputs[2])
+
+        if "IOR" in texNodedir:
+            node = texNodedir.pop("IOR")
+            connect_sockets(node.outputs["Color"], BSDFNode.inputs[3])
+
+        if "Alpha" in texNodedir:
+            node = texNodedir.pop("Alpha")
+            connect_sockets(node.outputs["Color"], BSDFNode.inputs[4])
 
         normal = False
         if "Normal" in texNodedir:
@@ -156,87 +191,123 @@ class Ops_TtoS(bpy.types.Operator):
             # convert directX normal map to openGL (invert green channel)
             location[0] = node.location[0] + settings.gapX
             location[1] = node.location[1] + 20
-            curves = self.addNode(nodes, "ShaderNodeRGBCurve", location, True)
+            curves = self.addNode(nodeTree, "ShaderNodeRGBCurve", location, True)
             curves.mapping.curves[1].points[0].location[1] = 1
             curves.mapping.curves[1].points[1].location[1] = 0
-            curves.label = "convert directX normal"
+            curves.label = "convert to directX normal"
             curves.mute = True
             connect_sockets(node.outputs["Color"], curves.inputs["Color"])
 
             # normal map node
             location[1] -= 40
-            normal = self.addNode(nodes, "ShaderNodeNormalMap", location, True)
+            normal = self.addNode(nodeTree, "ShaderNodeNormalMap", location, True)
             connect_sockets(curves.outputs["Color"], normal.inputs["Color"])
-            connect_sockets(normal.outputs["Normal"], BSDFNode.inputs["Normal"])
+            connect_sockets(normal.outputs["Normal"], BSDFNode.inputs[5])
 
-        elif "Bump" in texNodedir:
+        if "Bump" in texNodedir:
             node = texNodedir.pop("Bump")
-            normal = True
 
             # bump node
             location[0] = node.location[0] + settings.gapX
             location[1] = node.location[1]
-            bump = self.addNode(nodes, "ShaderNodeBump", location)
+            bump = self.addNode(nodeTree, "ShaderNodeBump", location)
             connect_sockets(node.outputs["Color"], bump.inputs["Height"])
-            connect_sockets(bump.outputs["Normal"], BSDFNode.inputs["Normal"])
 
-        if "Glossiness" in texNodedir:
-            node = texNodedir.pop("Glossiness")
+            if normal is False:
+                connect_sockets(bump.outputs["Normal"], BSDFNode.inputs[5])
 
-            if "Roughness" not in texNodedir:
-                # invert node
-                location[0] = node.location[0] + settings.gapX
-                location[1] = node.location[1]
-                invert = self.addNode(nodes, "ShaderNodeInvert", location, True)
-                connect_sockets(node.outputs["Color"], invert.inputs["Color"])
-                connect_sockets(invert.outputs["Color"], BSDFNode.inputs["Roughness"])
+        if "Subsurface Weight" in texNodedir:
+            node = texNodedir.pop("Subsurface Weight")
+            connect_sockets(node.outputs["Color"], BSDFNode.inputs[7])
+
+        if "Subsurface Radius" in texNodedir:
+            node = texNodedir.pop("Subsurface Radius")
+            connect_sockets(node.outputs["Color"], BSDFNode.inputs[8])
+
+        if "Tint" in texNodedir:
+            node = texNodedir.pop("Tint")
+            connect_sockets(node.outputs["Color"], BSDFNode.inputs[12])
+
+        if "Transmission Weight" in texNodedir:
+            node = texNodedir.pop("Transmission Weight")
+            connect_sockets(node.outputs["Color"], BSDFNode.inputs[17])
+
+        if "Emission Strength" in texNodedir:
+            node = texNodedir.pop("Emission Strength")
+            connect_sockets(node.outputs["Color"], BSDFNode.inputs[27])
 
         if "Displacement" in texNodedir:
             node = texNodedir.pop("Displacement")
 
             # displacement node
-            location[0] = BSDFNode.location[0]
-            location[1] = BSDFNode.location[1] - 700
-            disp = self.addNode(nodes, "ShaderNodeDisplacement", location)
+            location[0] = BSDFNode.location[0] + settings.gapX
+            location[1] = BSDFNode.location[1] - 300
+            disp = self.addNode(nodeTree, "ShaderNodeDisplacement", location)
             connect_sockets(node.outputs["Color"], disp.inputs["Height"])
 
-            # connect to bump if no bump texture
-            if normal is False:
-                location[0] = node.location[0] + settings.gapX
-                location[1] = node.location[1]
-                bump = self.addNode(nodes, "ShaderNodeBump", location)
-                connect_sockets(node.outputs["Color"], bump.inputs["Height"])
-                connect_sockets(bump.outputs["Normal"], BSDFNode.inputs["Normal"])
+            # set displacement method and link to output
+            bpy.context.object.active_material.displacement_method = "BOTH"
+            connect_sockets(
+                disp.outputs["Displacement"], OutputNode.inputs["Displacement"]
+            )
 
         # other texture direct link
-        for key, node in texNodedir.items():
-            connect_sockets(node.outputs["Color"], BSDFNode.inputs[key])
+        # for key, node in texNodedir.items():
+        #     connect_sockets(node.outputs["Color"], BSDFNode.inputs[key])
+
+        # BSDF link to output node
+        connect_sockets(BSDFNode.outputs["BSDF"], OutputNode.inputs["Surface"])
 
         return True
 
     def execute(self, context):
         settings = context.preferences.addons[__package__].preferences
-        nodes = self.getActiveTree(context)
+        nodeTree = self.getActiveTree(context)
+        selectedNodes = [node for node in context.selected_nodes]
+        BSDFNode = None
+        OutputNode = None
 
-        # use BDRF node if it active or create new one if not
-        existActiveNode = True
-        if (
-            context.active_node is None
-            or context.active_node.bl_idname != "ShaderNodeBsdfPrincipled"
-        ):
-            existActiveNode = False
+        # git BDRF node, if not exist create one
+        existBSDFNode = True
+        for node in selectedNodes:
+            if node.bl_idname == "ShaderNodeBsdfPrincipled":
+                BSDFNode = node
+                break
+
+        if BSDFNode is None:
+            existBSDFNode = False
             bpy.ops.node.add_node(use_transform=False, type="ShaderNodeBsdfPrincipled")
+            BSDFNode = context.active_node
 
-        BSDFNode = context.active_node
+        # git Output node, if not exist create one
+        existOutputNode = True
+        for node in nodeTree:
+            print(node.bl_idname)
+            if node.bl_idname == "ShaderNodeOutputMaterial":
+                OutputNode = node
+                break
+
+        if OutputNode is None:
+            existOutputNode = False
+            OutputNodelocal = [
+                BSDFNode.location[0] + settings.gapX,
+                BSDFNode.location[1],
+            ]
+            self.addNode(nodeTree, "ShaderNodeOutputMaterial", OutputNodelocal)
+            OutputNode = context.active_node
 
         # create node tree
         fileList = self.imageTpye(self.files, settings)
-        result = self.pipyline(nodes, BSDFNode, settings, fileList)
+        result = self.pipeline(nodeTree, BSDFNode, OutputNode, settings, fileList)
 
-        # if no textures imported delete BSDF node
-        if result is False and existActiveNode is False:
-            BSDFNode.select = True
-            bpy.ops.node.delete()
+        # if no textures imported delete created node
+        if result is False:
+            if existBSDFNode is False:
+                BSDFNode.select = True
+                bpy.ops.node.delete()
+            if existOutputNode is False:
+                OutputNode.select = True
+                bpy.ops.node.delete()
 
         return {"FINISHED"}
 
