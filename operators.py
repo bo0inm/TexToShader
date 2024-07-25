@@ -5,10 +5,10 @@ from bpy_extras.io_utils import ImportHelper
 
 
 class Ops_TtoS(bpy.types.Operator):
-    """Create shader node tree from texture"""
+    """Create shader nodes tree from texture"""
 
     bl_label = "Tex to Shader"
-    bl_description = "Create shader node tree from texture"
+    bl_description = "Create shader nodes tree from texture"
     bl_options = {"REGISTER", "UNDO"}
 
     directory: bpy.props.StringProperty(subtype="DIR_PATH")
@@ -68,7 +68,7 @@ class Ops_TtoS(bpy.types.Operator):
 
         for key, value in fields.items():
             fields[key] = [
-                list(filter(lambda x: x, value[0].lower().split(" "))),
+                list(filter(lambda x: x, value[0].lower().strip().split(" "))),
                 value[1],
             ]
 
@@ -77,10 +77,19 @@ class Ops_TtoS(bpy.types.Operator):
 
         for key, values in fields.items():
             for name, file in name_fileList:
-                if any(keyWord in name for keyWord in values[0]):
+                if any(keyWord in name and keyWord != "" for keyWord in values[0]):
                     dataDict[key] = [file, values[1]]
                     name_fileList.remove((name, file))
                     break
+
+        # add other files
+        otherKeyWordsList = [
+            keyWord for keyWord in settings.other.lower().strip().split(" ")
+        ]
+        if len(otherKeyWordsList) > 0:
+            for name, file in name_fileList:
+                if any(keyWord in name and keyWord != "" for keyWord in otherKeyWordsList):
+                    dataDict[name] = [file, settings.data_colorspace]
 
         return dataDict
 
@@ -107,8 +116,6 @@ class Ops_TtoS(bpy.types.Operator):
 
     def pipeline(self, nodeTree, BSDFNode, OutputNode, settings, fileList):
         """Create node tree from texture"""
-        location = copy(BSDFNode.location)
-        texNodedir = {}
 
         # --- import textures ---
         def importTextures(Type):
@@ -121,6 +128,9 @@ class Ops_TtoS(bpy.types.Operator):
                     fileList[Type][1],
                     Type,
                 )
+
+        location = copy(BSDFNode.location)
+        texNodedir = {}
 
         location[0] -= settings.gapX * 2
         for fileItem in fileList:
@@ -143,15 +153,16 @@ class Ops_TtoS(bpy.types.Operator):
         for node in texNodedir.values():
             connect_sockets(mapping.outputs["Vector"], node.inputs["Vector"])
 
+        node = None
         # --- texture effect node ---
         # AO texture just load if has both AO and Base Color
         if "Ambient Occlusion" in texNodedir:
             node = texNodedir.pop("Ambient Occlusion")
+            connect_sockets(node.outputs["Color"], BSDFNode.inputs[0])
 
         if "Base Color" in texNodedir:
             node = texNodedir.pop("Base Color")
-
-        connect_sockets(node.outputs["Color"], BSDFNode.inputs[0])
+            connect_sockets(node.outputs["Color"], BSDFNode.inputs[0])
 
         if "Metallic" in texNodedir:
             node = texNodedir.pop("Metallic")
@@ -251,10 +262,6 @@ class Ops_TtoS(bpy.types.Operator):
                 disp.outputs["Displacement"], OutputNode.inputs["Displacement"]
             )
 
-        # other texture direct link
-        # for key, node in texNodedir.items():
-        #     connect_sockets(node.outputs["Color"], BSDFNode.inputs[key])
-
         # BSDF link to output node
         connect_sockets(BSDFNode.outputs["BSDF"], OutputNode.inputs["Surface"])
 
@@ -298,6 +305,8 @@ class Ops_TtoS(bpy.types.Operator):
 
         # create node tree
         fileList = self.imageTpye(self.files, settings)
+        if len(fileList) == 0:
+            return {"CANCELLED"}
         result = self.pipeline(nodeTree, BSDFNode, OutputNode, settings, fileList)
 
         # if no textures imported delete created node

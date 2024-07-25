@@ -107,6 +107,11 @@ class Pref_TtoS(bpy.types.AddonPreferences):
         default="displacement displace disp dsp height heightmap",
         description="Displacement maps",
     )
+    other: StringProperty(
+        name="Other",
+        default="",
+        description="imported but not used",
+    )
 
     def draw(self, context):
         layout = self.layout
@@ -133,3 +138,4 @@ class Pref_TtoS(bpy.types.AddonPreferences):
         layout.prop(self, "transmission")
         layout.prop(self, "emission")
         layout.prop(self, "displacement")
+        layout.prop(self, "other")
