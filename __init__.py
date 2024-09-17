@@ -1,14 +1,3 @@
-bl_info = {
-    "name": "TexToShader",
-    "author": "Bo0inM",
-    "description": "Create shader nodes based on the name of the texture files",
-    "blender": (4, 2, 0),
-    "version": (1, 0, 0),
-    "location": "Node Editor > Add > Tex->Shader",
-    "doc_url": "https://github.com/bo0inm/TexToShader",
-    "category": "Node",
-}
-
 import bpy
 from . import operators
 from . import preferences

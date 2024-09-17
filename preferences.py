@@ -23,7 +23,7 @@ class Pref_TtoS(bpy.types.AddonPreferences):
         name="Color",
         default="sRGB",
         description="""Default Colorspace for color images, must be set correctly value\n
-            (For example, use OCIO , set to sRGB - Texture)""",
+            (For example, use OCIO config , set to sRGB - Texture)""",
     )
     data_colorspace: StringProperty(
         name="Non-Color",

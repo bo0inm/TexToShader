@@ -1,8 +1,8 @@
 # TexToShader
 
-**Blender Add-ons.** Easy to import universal textures.
+**Blender Add-ons.** Easier to import generic local textures in batches.
 
-![intro](./intro.gif)
+![intro](./res/intro.gif)
 
 ## Setting
 
